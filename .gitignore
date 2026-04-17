@@ -1,0 +1,85 @@
+# ╔══════════════════════════════════════════════════════════════╗
+# ║  ElecLabel — .gitignore racine (mono-repo desktop + mobile)    ║
+# ╚══════════════════════════════════════════════════════════════╝
+
+# ── Secrets — NE JAMAIS COMMITTER ──
+.env
+.env.local
+.env.*.local
+**/.env
+**/.env.local
+**/.env.*.local
+mdp
+*.keystore
+*.jks
+eleclabel-mobile/android/keystore.properties
+# Clés de signature des mises à jour Tauri.
+# La clé PRIVÉE ne doit JAMAIS être commit. La publique vit déjà dans tauri.conf.json.
+*.key
+eleclabel/eleclabel-updater.key
+eleclabel/eleclabel-updater.key.pub
+
+# ── Dépendances ──
+node_modules/
+**/node_modules/
+package-lock.json.bak
+
+# ── Builds frontend ──
+dist/
+dist-ssr/
+**/dist/
+*.local
+*.tsbuildinfo
+
+# ── Tauri / Rust (desktop) ──
+eleclabel/src-tauri/target/
+eleclabel/src-tauri/WixTools/
+eleclabel/src-tauri/gen/schemas/
+
+# ── Capacitor / Android (mobile) ──
+# Le dossier android/ est régénérable via `npx cap add android` — on ne le commit pas
+eleclabel-mobile/android/
+eleclabel-mobile/ios/
+# (si tu veux versionner android/, supprime la ligne ci-dessus et garde les exclusions ci-dessous)
+eleclabel-mobile/android/.gradle/
+eleclabel-mobile/android/app/build/
+eleclabel-mobile/android/build/
+eleclabel-mobile/android/captures/
+eleclabel-mobile/android/app/release/
+
+# ── Photos de test / clients (privé) ──
+exemple/
+
+# ── Outils générés ──
+eleclabel-mobile/assets/
+
+# ── IDE ──
+.vscode/*
+!.vscode/extensions.json
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# ── OS ──
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ── Logs ──
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# ── Supabase CLI (cache local) ──
+supabase/.temp/
+supabase/.branches/
+
+# ── Outils & config locale ──
+.claude/
+.vscode/
+.idea/

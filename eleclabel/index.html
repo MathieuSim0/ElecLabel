@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <!-- Police chargée en NON-bloquant : media=print puis bascule onload.
+         Évite l'écran blanc figé si Google Fonts est lent/injoignable (cas du .exe hors-ligne). -->
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=IBM+Plex+Sans+Condensed:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+      media="print"
+      onload="this.media='all'"
+    />
+    <title>ElecLabel</title>
+    <!-- Filet de sécurité : si une erreur JS empêche le rendu, on l'affiche au lieu d'un écran blanc. -->
+    <script>
+      window.addEventListener("error", function (e) {
+        var r = document.getElementById("root");
+        if (r && !r.hasChildNodes()) {
+          r.innerHTML =
+            '<pre style="padding:20px;color:#b00020;white-space:pre-wrap;font:13px monospace">ERREUR DE DÉMARRAGE :\n' +
+            ((e && e.message) || e) +
+            "\n" +
+            ((e && e.filename) || "") +
+            ":" +
+            ((e && e.lineno) || "") +
+            "</pre>";
+        }
+      });
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

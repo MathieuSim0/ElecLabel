@@ -1,0 +1,66 @@
+@import "tailwindcss";
+
+/* ── Design tokens ElecLabel ── */
+@theme {
+  --font-sans:   "Inter", system-ui, -apple-system, sans-serif;
+  --font-label:  "IBM Plex Sans Condensed", "Arial Narrow", Arial, sans-serif;
+
+  /* Couleurs de surface */
+  --color-bg:        #F7F8FC;
+  --color-surface:   #FFFFFF;
+  --color-raised:    #F0F2F8;
+
+  /* Primaire */
+  --color-primary:   #111827;
+  --color-primary2:  #1F2937;
+
+  /* Accent */
+  --color-accent:    #E63946;
+  --color-accent2:   #C0303C;
+
+  /* Texte */
+  --color-t1:        #111827;
+  --color-t2:        #4B5563;
+  --color-t3:        #9CA3AF;
+
+  /* Bordures */
+  --color-border:    #E5E7EB;
+  --color-border2:   #D1D5DB;
+
+  /* Pôles */
+  --color-pole1:     #2563EB;
+  --color-pole2:     #D97706;
+  --color-pole3:     #DC2626;
+}
+
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  font-size: 14px;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+body {
+  font-family: var(--font-sans);
+  background-color: var(--color-bg);
+  color: var(--color-t1);
+  line-height: 1.5;
+}
+
+/* Scrollbar discrète */
+::-webkit-scrollbar        { width: 6px; height: 6px; }
+::-webkit-scrollbar-track  { background: transparent; }
+::-webkit-scrollbar-thumb  { background: #D1D5DB; border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: #9CA3AF; }
+
+/* Inputs sans outline native */
+input:focus { outline: none; }
+
+/* Transitions globales sur les boutons */
+button { transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease, opacity 0.15s ease; }
