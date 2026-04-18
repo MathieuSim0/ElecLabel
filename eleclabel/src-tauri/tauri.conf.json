@@ -1,0 +1,63 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "ElecLabel",
+  "version": "1.0.9",
+  "identifier": "com.ase-sparkium.eleclabel",
+  "build": {
+    "frontendDist": "../dist",
+    "devUrl": "http://localhost:1420",
+    "beforeDevCommand": "npm run dev",
+    "beforeBuildCommand": "npm run build"
+  },
+  "app": {
+    "windows": [
+      {
+        "title": "ElecLabel",
+        "width": 1280,
+        "height": 840,
+        "minWidth": 900,
+        "minHeight": 600,
+        "resizable": true,
+        "fullscreen": false,
+        "center": true
+      }
+    ],
+    "security": {
+      "csp": null
+    }
+  },
+  "plugins": {
+    "updater": {
+      "endpoints": [
+        "https://github.com/MathieuSim0/ElecLabel/releases/latest/download/latest.json"
+      ],
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDM1Nzc1NTJDNjg0RUFGOTgKUldTWXIwNW9MRlYzTlZndWNLeGFSQTdsN0lVVTJqd1FIQ3RvVzNUUy9NUU92QWFCS1QvZFhvQ2oK"
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": ["nsis"],
+    "createUpdaterArtifacts": true,
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns",
+      "icons/icon.ico"
+    ],
+    "publisher": "Alain Simon Électricité",
+    "copyright": "© 2026 Alain Simon Électricité",
+    "category": "Productivity",
+    "shortDescription": "Étiquettes de tableau électrique",
+    "longDescription": "ElecLabel — analyse de tableau électrique par photo, édition des étiquettes et export PDF A4 prêt à découper.",
+    "windows": {
+      "webviewInstallMode": {
+        "type": "downloadBootstrapper"
+      },
+      "nsis": {
+        "installMode": "currentUser",
+        "languages": ["French", "English"]
+      }
+    }
+  }
+}

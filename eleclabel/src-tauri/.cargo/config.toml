@@ -1,0 +1,9 @@
+[build]
+# Limite les jobs parallèles pour réduire la consommation RAM
+# La compilation du crate `windows` est très gourmande en mémoire
+jobs = 2
+
+[profile.dev]
+# Réduit l'utilisation mémoire de LLVM en limitant les optimisations en debug
+opt-level = 0
+debug = 1
