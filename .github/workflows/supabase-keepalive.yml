@@ -1,0 +1,40 @@
+# Empêche la mise en pause du projet Supabase (plan gratuit : pause après ~1 semaine d'inactivité).
+# Envoie une requête anodine tous les 5 jours pour réinitialiser le compteur d'inactivité.
+#
+# Mise en place :
+#   1. Pousser ce repo sur GitHub
+#   2. Settings → Secrets and variables → Actions → ajouter :
+#        SUPABASE_URL       = https://xxxxx.supabase.co
+#        SUPABASE_ANON_KEY  = eyJ... (clé anon)
+#   3. Le workflow s'exécute automatiquement, ou via Actions → Run workflow
+
+name: Supabase Keep-Alive
+
+on:
+  schedule:
+    # tous les 5 jours à 12:00 UTC
+    - cron: "0 12 */5 * *"
+  workflow_dispatch: {}   # permet le lancement manuel depuis l'onglet Actions
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping Supabase REST
+        run: |
+          if [ -z "${{ secrets.SUPABASE_URL }}" ] || [ -z "${{ secrets.SUPABASE_ANON_KEY }}" ]; then
+            echo "::error::Secrets SUPABASE_URL et/ou SUPABASE_ANON_KEY manquants."
+            exit 1
+          fi
+          echo "Ping de ${{ secrets.SUPABASE_URL }} …"
+          code=$(curl -s -o /dev/null -w "%{http_code}" \
+            "${{ secrets.SUPABASE_URL }}/rest/v1/profiles?select=id&limit=1" \
+            -H "apikey: ${{ secrets.SUPABASE_ANON_KEY }}" \
+            -H "Authorization: Bearer ${{ secrets.SUPABASE_ANON_KEY }}")
+          echo "Code HTTP : $code"
+          # 200 = OK, 401/403 = projet réveillé mais RLS bloque (normal sans session) → projet actif
+          if [ "$code" = "200" ] || [ "$code" = "401" ] || [ "$code" = "403" ]; then
+            echo "✓ Projet Supabase actif."
+          else
+            echo "::warning::Réponse inattendue ($code) — vérifie l'URL/clé ou l'état du projet."
+          fi
