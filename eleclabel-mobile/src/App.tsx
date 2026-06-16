@@ -8,6 +8,7 @@ import Editor from "./pages/Editor";
 import Preview from "./pages/Preview";
 import Invoices from "./pages/Invoices";
 import AuthGate from "./components/AuthGate";
+import VoltAssistant from "./components/VoltAssistant";
 
 export default function App() {
   return (
@@ -21,6 +22,7 @@ export default function App() {
         <Route path="/preview" element={<Preview />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
+      <VoltAssistant />
     </AuthGate>
   );
 }

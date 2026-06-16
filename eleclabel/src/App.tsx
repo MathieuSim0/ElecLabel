@@ -8,6 +8,7 @@ import History from "./pages/History";
 import Invoices from "./pages/Invoices";
 import AuthGate from "./components/AuthGate";
 import UpdateBanner from "./components/UpdateBanner";
+import VoltAssistant from "./components/VoltAssistant";
 
 export default function App() {
   return (
@@ -23,6 +24,7 @@ export default function App() {
           <Route path="/preview" element={<Preview />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
+        <VoltAssistant />
       </AuthGate>
     </BrowserRouter>
   );
