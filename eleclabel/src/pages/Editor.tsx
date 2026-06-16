@@ -16,6 +16,7 @@ export default function Editor() {
     updateLabel,
     applyPreset,
     updatePoles,
+    updateModule,
     deleteBreaker,
     addBreaker,
     deleteRow,
@@ -517,9 +518,15 @@ export default function Editor() {
         />
       </main>
 
-      {/* Modale de presets — ouverte quand pickerBreakerId !== null */}
+      {/* Modale de presets + détails techniques — ouverte quand pickerBreakerId !== null */}
       <LabelPicker
         breakerId={pickerBreakerId}
+        breaker={
+          pickerBreakerId
+            ? panel.rows.flatMap((r) => r.breakers).find((b) => b.id === pickerBreakerId) ?? null
+            : null
+        }
+        onUpdateModule={updateModule}
         onPick={(id, preset) => {
           applyPreset(id, preset);
           setPickerBreakerId(null);

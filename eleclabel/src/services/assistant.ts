@@ -123,9 +123,9 @@ et rappelle que tu signales des points à vérifier, pas une validation officiel
 {{TABLEAU_JSON}}`;
 
 // Transforme le tableau courant en JSON compact et lisible pour le modèle.
-// On n'expose que ce que l'app modélise réellement (rangées, position, pôles,
-// libellé). L'app ne stocke pas les calibres ni le type de différentiel : Volt
-// le sait et reste prudent là-dessus.
+// Inclut les champs techniques structurés (type, calibre, différentiel, usage)
+// pour permettre l'audit topologique sans dépendre du nommage manuel.
+// Convention : null = inconnu (Volt ne doit pas inventer).
 export function serializePanel(panel: Panel | null): string {
   if (!panel || panel.rows.length === 0) return "Aucun tableau ouvert.";
 
@@ -137,7 +137,12 @@ export function serializePanel(panel: Panel | null): string {
       emplacements_libres: Math.max(0, row.totalSlots - occupied),
       modules: row.breakers.map((b) => ({
         position: b.position + 1,
+        type: b.type ?? null,
+        calibre_A: b.calibre_A ?? null,
         poles: b.poles,
+        ddr_type: b.ddr_type ?? null,
+        sensibilite_mA: b.sensibilite_mA ?? null,
+        circuit_type: b.circuit_type ?? null,
         nom: b.label?.trim() ? b.label.trim() : null,
         sous_titre: b.sublabel?.trim() ? b.sublabel.trim() : null,
         // true = nom proposé par l'IA, pas encore confirmé par l'électricien
@@ -148,7 +153,7 @@ export function serializePanel(panel: Panel | null): string {
 
   const data = {
     nom: panel.project?.notes?.trim() || panel.project?.clientName?.trim() || "Tableau en cours",
-    note: "L'app ne capture pas les calibres (A) ni le type de différentiel (A/AC). Ne les invente pas.",
+    note: "Les modules sont listés de gauche à droite par rangée. Un champ à null = information non renseignée : ne l'invente pas.",
     rangees,
   };
   return JSON.stringify(data, null, 2);

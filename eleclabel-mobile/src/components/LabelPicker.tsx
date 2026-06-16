@@ -8,15 +8,21 @@ import {
   type LabelPreset,
   type PresetCategory,
 } from "../data/labelPresets";
+import type { Breaker, ModuleType, DdrType, CircuitType } from "../types/panel";
+import type { ModulePatch } from "../store/panelStore";
 
 interface LabelPickerProps {
   /** Présent → modale ouverte ; null → fermée */
   breakerId: string | null;
+  /** Module courant (pour éditer ses champs techniques) */
+  breaker?: Breaker | null;
+  /** Met à jour les champs techniques structurés du module */
+  onUpdateModule?: (breakerId: string, patch: ModulePatch) => void;
   onPick: (breakerId: string, preset: LabelPreset) => void;
   onClose: () => void;
 }
 
-export default function LabelPicker({ breakerId, onPick, onClose }: LabelPickerProps) {
+export default function LabelPicker({ breakerId, breaker, onUpdateModule, onPick, onClose }: LabelPickerProps) {
   const [query, setQuery] = useState("");
   const [activeCategory, setActiveCategory] = useState<PresetCategory | "Tous">("Tous");
   const inputRef = useRef<HTMLInputElement>(null);
@@ -222,6 +228,11 @@ export default function LabelPicker({ breakerId, onPick, onClose }: LabelPickerP
           </div>
         </div>
 
+        {/* ── Détails techniques du module ── */}
+        {breaker && onUpdateModule && (
+          <TechnicalDetails breaker={breaker} onUpdate={(patch) => onUpdateModule(breaker.id, patch)} />
+        )}
+
         {/* ── Liste des presets ── */}
         <div style={{ flex: 1, overflowY: "auto", padding: "12px 20px 20px" }}>
           {filtered.length === 0 ? (
@@ -277,6 +288,128 @@ export default function LabelPicker({ breakerId, onPick, onClose }: LabelPickerP
         @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
         @keyframes slideIn { from { transform: translateX(20px); } to { transform: translateX(0); } }
       `}</style>
+    </div>
+  );
+}
+
+// Options des sélecteurs techniques. "" = valeur null (inconnu).
+const TYPE_OPTS: { v: ModuleType | ""; t: string }[] = [
+  { v: "", t: "— Type —" },
+  { v: "disjoncteur", t: "Disjoncteur" },
+  { v: "interrupteur_differentiel", t: "Inter. différentiel" },
+  { v: "agcp", t: "AGCP (branchement)" },
+  { v: "parafoudre", t: "Parafoudre" },
+  { v: "autre", t: "Autre" },
+];
+const CALIBRE_OPTS = ["", "2", "10", "16", "20", "25", "32", "40", "63"];
+const DDR_OPTS: { v: DdrType | ""; t: string }[] = [
+  { v: "", t: "— Type diff. —" },
+  { v: "AC", t: "Type AC" },
+  { v: "A", t: "Type A" },
+  { v: "F", t: "Type F" },
+  { v: "B", t: "Type B" },
+];
+const SENS_OPTS = ["", "30", "300", "500"];
+const CIRCUIT_OPTS: { v: CircuitType | ""; t: string }[] = [
+  { v: "", t: "— Usage —" },
+  { v: "eclairage", t: "Éclairage" },
+  { v: "prises", t: "Prises" },
+  { v: "specialise", t: "Spécialisé" },
+  { v: "chauffage", t: "Chauffage" },
+  { v: "autre", t: "Autre" },
+];
+
+const selectStyle: React.CSSProperties = {
+  flex: 1,
+  minWidth: 0,
+  padding: "7px 9px",
+  fontSize: 12.5,
+  border: "1.5px solid #E5E7EB",
+  borderRadius: 8,
+  background: "#FFFFFF",
+  color: "#111827",
+  outline: "none",
+  fontFamily: "inherit",
+  cursor: "pointer",
+};
+
+// Bloc d'édition des champs techniques structurés (alimente l'audit de Volt).
+function TechnicalDetails({ breaker, onUpdate }: { breaker: Breaker; onUpdate: (patch: ModulePatch) => void }) {
+  const isDiff = breaker.type === "interrupteur_differentiel";
+  return (
+    <div style={{ padding: "12px 20px", borderBottom: "1px solid #E5E7EB", background: "#F9FAFB" }}>
+      <h3
+        style={{
+          fontSize: 11,
+          fontWeight: 700,
+          color: "#6B7280",
+          textTransform: "uppercase",
+          letterSpacing: 0.5,
+          marginBottom: 8,
+        }}
+      >
+        Détails techniques
+      </h3>
+      <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+        <div style={{ display: "flex", gap: 8 }}>
+          <select
+            value={breaker.type ?? ""}
+            onChange={(e) => onUpdate({ type: (e.target.value || null) as ModuleType | null })}
+            style={selectStyle}
+            title="Nature du module"
+          >
+            {TYPE_OPTS.map((o) => (
+              <option key={o.v} value={o.v}>{o.t}</option>
+            ))}
+          </select>
+          <select
+            value={breaker.calibre_A != null ? String(breaker.calibre_A) : ""}
+            onChange={(e) => onUpdate({ calibre_A: e.target.value ? Number(e.target.value) : null })}
+            style={selectStyle}
+            title="Calibre (ampères)"
+          >
+            {CALIBRE_OPTS.map((c) => (
+              <option key={c} value={c}>{c === "" ? "— Calibre —" : `${c} A`}</option>
+            ))}
+          </select>
+        </div>
+
+        <select
+          value={breaker.circuit_type ?? ""}
+          onChange={(e) => onUpdate({ circuit_type: (e.target.value || null) as CircuitType | null })}
+          style={selectStyle}
+          title="Usage du circuit"
+        >
+          {CIRCUIT_OPTS.map((o) => (
+            <option key={o.v} value={o.v}>{o.t}</option>
+          ))}
+        </select>
+
+        {isDiff && (
+          <div style={{ display: "flex", gap: 8 }}>
+            <select
+              value={breaker.ddr_type ?? ""}
+              onChange={(e) => onUpdate({ ddr_type: (e.target.value || null) as DdrType | null })}
+              style={selectStyle}
+              title="Type de différentiel"
+            >
+              {DDR_OPTS.map((o) => (
+                <option key={o.v} value={o.v}>{o.t}</option>
+              ))}
+            </select>
+            <select
+              value={breaker.sensibilite_mA != null ? String(breaker.sensibilite_mA) : ""}
+              onChange={(e) => onUpdate({ sensibilite_mA: e.target.value ? Number(e.target.value) : null })}
+              style={selectStyle}
+              title="Sensibilité (mA)"
+            >
+              {SENS_OPTS.map((s) => (
+                <option key={s} value={s}>{s === "" ? "— Sensib. —" : `${s} mA`}</option>
+              ))}
+            </select>
+          </div>
+        )}
+      </div>
     </div>
   );
 }

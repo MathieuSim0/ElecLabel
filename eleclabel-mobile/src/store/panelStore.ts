@@ -1,6 +1,12 @@
 // Store Zustand — état global du tableau électrique et des étiquettes
 import { create } from "zustand";
-import type { Panel, PanelRow, PoleWidth, ProjectMeta } from "../types/panel";
+import type { Breaker, Panel, PanelRow, PoleWidth, ProjectMeta } from "../types/panel";
+import { migratePanel } from "../utils/breakerEnrich";
+
+// Champs techniques modifiables d'un module (sous-ensemble de Breaker)
+export type ModulePatch = Partial<
+  Pick<Breaker, "type" | "calibre_A" | "ddr_type" | "sensibilite_mA" | "circuit_type">
+>;
 
 interface PanelStore {
   panel: Panel | null;
@@ -21,6 +27,8 @@ interface PanelStore {
     preset: { label: string; sublabel: string; icon: string },
   ) => void;
   updatePoles: (breakerId: string, poles: PoleWidth) => void;
+  // Met à jour les champs techniques structurés (type, calibre, différentiel…)
+  updateModule: (breakerId: string, patch: ModulePatch) => void;
   deleteBreaker: (breakerId: string) => void;
   addBreaker: (rowIndex: number, poles?: PoleWidth) => void;
   deleteRow: (rowIndex: number) => void;
@@ -62,7 +70,8 @@ export const usePanelStore = create<PanelStore>((set, get) => ({
   // setPanel remplace le panel et purge l'historique (nouveau projet)
   // L'id history est volontairement remis à null : c'est l'appelant (Home/Templates/History)
   // qui appelle setHistoryId juste après pour brancher l'auto-save.
-  setPanel: (panel) => set({ panel, past: [], future: [], currentHistoryId: null }),
+  setPanel: (panel) =>
+    set({ panel: migratePanel(panel), past: [], future: [], currentHistoryId: null }),
 
   setHistoryId: (id) => set({ currentHistoryId: id }),
 
@@ -142,6 +151,33 @@ export const usePanelStore = create<PanelStore>((set, get) => ({
           const totalSlots = Math.max(row.totalSlots, currentSlot);
           return { ...row, totalSlots, breakers: repositioned };
         }),
+      };
+      return {
+        panel: nextPanel,
+        past: pushHistory(state.past, state.panel),
+        future: [],
+      };
+    }),
+
+  // Met à jour les champs techniques structurés d'un module.
+  // Si le type devient non-différentiel, on purge ddr_type/sensibilité (cohérence).
+  updateModule: (breakerId, patch) =>
+    set((state) => {
+      if (!state.panel) return state;
+      const nextPanel: Panel = {
+        ...state.panel,
+        rows: state.panel.rows.map((row) => ({
+          ...row,
+          breakers: row.breakers.map((b) => {
+            if (b.id !== breakerId) return b;
+            const merged = { ...b, ...patch };
+            if ("type" in patch && patch.type !== "interrupteur_differentiel") {
+              merged.ddr_type = null;
+              merged.sensibilite_mA = null;
+            }
+            return merged;
+          }),
+        })),
       };
       return {
         panel: nextPanel,
