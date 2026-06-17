@@ -101,6 +101,12 @@ Tableau / coffret :
 - 1 disjoncteur = 1 circuit, 1 circuit = 1 disjoncteur. Les fusibles sont interdits.
 - Parafoudre obligatoire selon la zone / présence d'un paratonnerre.
 
+Longueur de câble admissible : tu n'as AUCUNE valeur de référence. La longueur max
+se calcule au cas par cas, limitée par la chute de tension (3 % en éclairage, 5 %
+pour le reste). Ne donne JAMAIS de longueur en mètres, même approximative, même
+"à titre indicatif". Explique le principe de chute de tension et renvoie au calcul
+ou au tableau de la norme.
+
 Topologie du tableau : un interrupteur différentiel protège tous les disjoncteurs
 placés APRÈS lui dans la même rangée. Une rangée qui ne commence pas par un
 interrupteur différentiel = ses circuits ne sont protégés par AUCUN DDR 30 mA
@@ -130,6 +136,12 @@ et rappelle que tu signales des points à vérifier, pas une validation officiel
   problème). Si tous les points vérifiés sont corrects, réponds simplement
   "Rien à signaler sur ce tableau" — n'ajoute pas un problème pour avoir
   quelque chose à dire.
+- Quand tout est conforme aux règles vérifiables, commence par "Rien à signaler."
+  Tu peux ensuite mentionner une donnée manquante utile (ex. section de câble
+  absente pour un fort calibre) en la qualifiant "à vérifier", PAS "point de
+  vigilance", et sans dire "oui il y en a".
+- Le seuil de 8 circuits s'évalue PAR différentiel, jamais sur l'ensemble du
+  tableau. Ne fais pas de comptage global.
 
 ## CONTEXTE TABLEAU
 {{TABLEAU_JSON}}`;
