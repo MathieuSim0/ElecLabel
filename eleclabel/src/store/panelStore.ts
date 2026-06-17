@@ -5,8 +5,17 @@ import { migratePanel } from "../utils/breakerEnrich";
 
 // Champs techniques modifiables d'un module (sous-ensemble de Breaker)
 export type ModulePatch = Partial<
-  Pick<Breaker, "type" | "calibre_A" | "ddr_type" | "sensibilite_mA" | "circuit_type">
+  Pick<Breaker, "type" | "calibre_A" | "ddr_type" | "sensibilite_mA" | "circuit_type" | "protege_par">
 >;
+
+// Génère un id de module unique et STABLE — jamais réattribué après création.
+// Indispensable pour que les références protege_par survivent aux ajouts/suppressions.
+function newBreakerId(): string {
+  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
+    return `m-${crypto.randomUUID().slice(0, 8)}`;
+  }
+  return `m-${Math.random().toString(36).slice(2, 10)}`;
+}
 
 interface PanelStore {
   panel: Panel | null;
@@ -44,12 +53,24 @@ interface PanelStore {
 // Limite de l'historique undo pour éviter la consommation mémoire excessive
 const MAX_HISTORY = 60;
 
-// Réindexe toutes les rangées et leurs disjoncteurs après suppression/ajout
+// Réindexe les rangées après suppression/ajout. Met à jour index/row mais
+// CONSERVE les id de modules (stabilité des références protege_par).
 function reindexRows(rows: PanelRow[]): PanelRow[] {
   return rows.map((row, i) => ({
     ...row,
     index: i,
-    breakers: row.breakers.map((b, bi) => ({ ...b, row: i, id: `r${i}-${bi}` })),
+    breakers: row.breakers.map((b) => ({ ...b, row: i })),
+  }));
+}
+
+// Annule les références protege_par pointant vers un module supprimé.
+function clearDanglingProtection(rows: PanelRow[], removedIds: Set<string>): PanelRow[] {
+  if (removedIds.size === 0) return rows;
+  return rows.map((row) => ({
+    ...row,
+    breakers: row.breakers.map((b) =>
+      b.protege_par && removedIds.has(b.protege_par) ? { ...b, protege_par: null } : b,
+    ),
   }));
 }
 
@@ -186,20 +207,18 @@ export const usePanelStore = create<PanelStore>((set, get) => ({
       };
     }),
 
-  // Supprime un disjoncteur et renumérote les ids de la rangée
+  // Supprime un disjoncteur. Les id restent stables ; on annule les éventuelles
+  // références protege_par qui pointaient vers le module supprimé.
   deleteBreaker: (breakerId) =>
     set((state) => {
       if (!state.panel) return state;
+      const rowsFiltered = state.panel.rows.map((row) => ({
+        ...row,
+        breakers: row.breakers.filter((b) => b.id !== breakerId),
+      }));
       const nextPanel: Panel = {
         ...state.panel,
-        rows: state.panel.rows.map((row) => {
-          const filtered = row.breakers.filter((b) => b.id !== breakerId);
-          if (filtered.length === row.breakers.length) return row;
-          return {
-            ...row,
-            breakers: filtered.map((b, i) => ({ ...b, id: `r${row.index}-${i}` })),
-          };
-        }),
+        rows: clearDanglingProtection(rowsFiltered, new Set([breakerId])),
       };
       return {
         panel: nextPanel,
@@ -221,7 +240,7 @@ export const usePanelStore = create<PanelStore>((set, get) => ({
             0,
           );
           const newBreaker = {
-            id: `r${rowIndex}-${row.breakers.length}`,
+            id: newBreakerId(),
             row: rowIndex,
             position: nextPos,
             poles,
@@ -239,12 +258,18 @@ export const usePanelStore = create<PanelStore>((set, get) => ({
       };
     }),
 
-  // Supprime une rangée entière et réindexe
+  // Supprime une rangée entière et réindexe (id de modules conservés ailleurs)
   deleteRow: (rowIndex) =>
     set((state) => {
       if (!state.panel) return state;
+      const removed = new Set(
+        state.panel.rows.find((r) => r.index === rowIndex)?.breakers.map((b) => b.id) ?? [],
+      );
       const filtered = state.panel.rows.filter((r) => r.index !== rowIndex);
-      const nextPanel: Panel = { ...state.panel, rows: reindexRows(filtered) };
+      const nextPanel: Panel = {
+        ...state.panel,
+        rows: clearDanglingProtection(reindexRows(filtered), removed),
+      };
       return {
         panel: nextPanel,
         past: pushHistory(state.past, state.panel),
@@ -259,7 +284,7 @@ export const usePanelStore = create<PanelStore>((set, get) => ({
       const rowIndex = state.panel.rows.length;
       const totalSlots = 13;
       const breakers = Array.from({ length: totalSlots }, (_, i) => ({
-        id: `r${rowIndex}-${i}`,
+        id: newBreakerId(),
         row: rowIndex,
         position: i,
         poles: 1 as PoleWidth,

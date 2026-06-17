@@ -526,6 +526,13 @@ export default function Editor() {
             ? panel.rows.flatMap((r) => r.breakers).find((b) => b.id === pickerBreakerId) ?? null
             : null
         }
+        protectors={panel.rows
+          .flatMap((r) => r.breakers)
+          .filter((b) => b.type === "interrupteur_differentiel")
+          .map((b) => ({
+            id: b.id,
+            label: b.label?.trim() ? b.label.trim() : `Différentiel R${b.row + 1}·P${b.position + 1}`,
+          }))}
         onUpdateModule={updateModule}
         onPick={(id, preset) => {
           applyPreset(id, preset);

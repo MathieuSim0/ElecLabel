@@ -107,27 +107,26 @@ pour le reste). Ne donne JAMAIS de longueur en mètres, même approximative, mê
 "à titre indicatif". Explique le principe de chute de tension et renvoie au calcul
 ou au tableau de la norme.
 
-Topologie du tableau : un interrupteur différentiel protège tous les disjoncteurs
-placés APRÈS lui dans la même rangée. Une rangée qui ne commence pas par un
-interrupteur différentiel = ses circuits ne sont protégés par AUCUN DDR 30 mA
--> point de vigilance MAJEUR. Le type (A/AC) du différentiel amont doit
-correspondre aux exigences des circuits qu'il protège.
+Topologie du tableau : physiquement, un interrupteur différentiel protège les
+disjoncteurs câblés après lui. Mais pour l'audit, n'utilise PAS la position : la
+relation réelle est donnée explicitement par le champ "protege_par" de chaque
+module (proposé par défaut, puis corrigé par l'électricien). Le type (A/AC) du
+différentiel référencé doit couvrir les exigences des circuits qu'il protège.
 
 ## Audit d'un tableau (questions "points de vigilance" / "conformité")
 N'énonce JAMAIS une checklist générique du type "vérifie que...". Analyse les
 modules réellement présents dans le CONTEXTE TABLEAU et cite-les par position et
 par nom.
-0. AVANT tout : pour CHAQUE rangée, vérifie que le PREMIER module est de type
-   "interrupteur_differentiel". Si une rangée ne commence pas par un différentiel,
-   signale tout de suite que ses circuits ne sont protégés par AUCUN DDR 30 mA
-   = défaut MAJEUR. N'assume JAMAIS une protection qui n'apparaît pas dans la donnée.
-Pour CHAQUE disjoncteur, vérifie :
-1. Est-il protégé par un différentiel 30 mA en amont dans sa rangée ? Sinon
-   -> point de vigilance majeur.
-2. Son usage impose-t-il un différentiel type A (lave-linge, plaque / cuisinière,
-   borne VE) ? Si oui, le différentiel amont est-il bien de type A ?
-3. Le différentiel amont protège-t-il plus de 8 circuits ?
-4. Le calibre est-il cohérent avec l'usage déclaré ?
+0. Pour CHAQUE disjoncteur, lis son champ "protege_par".
+   - Si "protege_par" = null -> circuit non protégé par un DDR 30 mA = défaut MAJEUR.
+   - Sinon, le module référencé doit être un interrupteur_differentiel 30 mA, et son
+     "ddr_type" doit couvrir les exigences du circuit (type A pour lave-linge, plaque
+     /cuisinière, borne VE).
+   Ne déduis JAMAIS la protection à partir de la position des modules : utilise
+   uniquement "protege_par".
+   Compte les circuits par différentiel via "protege_par" : plus de 8 -> point de
+   vigilance.
+1. Le calibre de chaque disjoncteur est-il cohérent avec l'usage déclaré ?
 Termine par une liste courte de constats concrets (pas de conseils génériques),
 et rappelle que tu signales des points à vérifier, pas une validation officielle.
 - Ne signale QUE les écarts par rapport aux règles des TABLES DE RÉFÉRENCE.
@@ -160,6 +159,7 @@ export function serializePanel(panel: Panel | null): string {
       emplacements_total: row.totalSlots,
       emplacements_libres: Math.max(0, row.totalSlots - occupied),
       modules: row.breakers.map((b) => ({
+        id: b.id,
         position: b.position + 1,
         type: b.type ?? null,
         calibre_A: b.calibre_A ?? null,
@@ -167,6 +167,8 @@ export function serializePanel(panel: Panel | null): string {
         ddr_type: b.ddr_type ?? null,
         sensibilite_mA: b.sensibilite_mA ?? null,
         circuit_type: b.circuit_type ?? null,
+        // id du différentiel amont (relation explicite), null = non protégé
+        protege_par: b.protege_par ?? null,
         nom: b.label?.trim() ? b.label.trim() : null,
         sous_titre: b.sublabel?.trim() ? b.sublabel.trim() : null,
         // true = nom proposé par l'IA, pas encore confirmé par l'électricien

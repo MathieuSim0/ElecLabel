@@ -18,11 +18,13 @@ interface LabelPickerProps {
   breaker?: Breaker | null;
   /** Met à jour les champs techniques structurés du module */
   onUpdateModule?: (breakerId: string, patch: ModulePatch) => void;
+  /** Liste des différentiels du tableau (pour le sélecteur « Protégé par ») */
+  protectors?: { id: string; label: string }[];
   onPick: (breakerId: string, preset: LabelPreset) => void;
   onClose: () => void;
 }
 
-export default function LabelPicker({ breakerId, breaker, onUpdateModule, onPick, onClose }: LabelPickerProps) {
+export default function LabelPicker({ breakerId, breaker, onUpdateModule, protectors, onPick, onClose }: LabelPickerProps) {
   const [query, setQuery] = useState("");
   const [activeCategory, setActiveCategory] = useState<PresetCategory | "Tous">("Tous");
   const inputRef = useRef<HTMLInputElement>(null);
@@ -230,7 +232,11 @@ export default function LabelPicker({ breakerId, breaker, onUpdateModule, onPick
 
         {/* ── Détails techniques du module ── */}
         {breaker && onUpdateModule && (
-          <TechnicalDetails breaker={breaker} onUpdate={(patch) => onUpdateModule(breaker.id, patch)} />
+          <TechnicalDetails
+            breaker={breaker}
+            protectors={(protectors ?? []).filter((p) => p.id !== breaker.id)}
+            onUpdate={(patch) => onUpdateModule(breaker.id, patch)}
+          />
         )}
 
         {/* ── Liste des presets ── */}
@@ -334,7 +340,15 @@ const selectStyle: React.CSSProperties = {
 };
 
 // Bloc d'édition des champs techniques structurés (alimente l'audit de Volt).
-function TechnicalDetails({ breaker, onUpdate }: { breaker: Breaker; onUpdate: (patch: ModulePatch) => void }) {
+function TechnicalDetails({
+  breaker,
+  protectors,
+  onUpdate,
+}: {
+  breaker: Breaker;
+  protectors: { id: string; label: string }[];
+  onUpdate: (patch: ModulePatch) => void;
+}) {
   const isDiff = breaker.type === "interrupteur_differentiel";
   return (
     <div style={{ padding: "12px 20px", borderBottom: "1px solid #E5E7EB", background: "#F9FAFB" }}>
@@ -384,6 +398,20 @@ function TechnicalDetails({ breaker, onUpdate }: { breaker: Breaker; onUpdate: (
             <option key={o.v} value={o.v}>{o.t}</option>
           ))}
         </select>
+
+        {!isDiff && protectors.length > 0 && (
+          <select
+            value={breaker.protege_par ?? ""}
+            onChange={(e) => onUpdate({ protege_par: e.target.value || null })}
+            style={selectStyle}
+            title="Différentiel qui protège ce circuit"
+          >
+            <option value="">Protégé par : Aucun</option>
+            {protectors.map((p) => (
+              <option key={p.id} value={p.id}>Protégé par : {p.label}</option>
+            ))}
+          </select>
+        )}
 
         {isDiff && (
           <div style={{ display: "flex", gap: 8 }}>

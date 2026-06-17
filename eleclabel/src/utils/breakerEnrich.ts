@@ -86,16 +86,46 @@ export function enrichBreakerFromLabel(b: Breaker): Breaker {
   return next;
 }
 
+// Pré-remplit la relation de protection (protege_par) par heuristique de départ.
+// NON DESTRUCTIF : ne touche qu'aux modules dont protege_par est undefined
+// (une valeur déjà saisie, y compris null = "Aucun", est conservée).
+// Règle : dans CHAQUE rangée, gauche → droite, on mémorise le dernier
+// interrupteur_differentiel vu ; chaque module suivant est protégé par lui.
+// Aucun report d'une rangée à l'autre : tant qu'aucun différentiel n'a été vu
+// dans la rangée, protege_par = null.
+export function assignProtection(panel: Panel): Panel {
+  return {
+    ...panel,
+    rows: panel.rows.map((row) => {
+      let currentDiffId: string | null = null;
+      return {
+        ...row,
+        breakers: row.breakers.map((b) => {
+          const isDiff = b.type === "interrupteur_differentiel";
+          // Le différentiel lui-même n'est pas protégé par un autre DDR ici.
+          const proposed = isDiff ? null : currentDiffId;
+          if (isDiff) currentDiffId = b.id;
+          if (b.protege_par !== undefined) return b; // déjà saisi → on garde
+          return { ...b, protege_par: proposed };
+        }),
+      };
+    }),
+  };
+}
+
 // Migre un panel entier vers le modèle courant (idempotent, non destructif).
 // Sûr à appeler à chaque entrée dans le store : ne touche pas aux panels déjà à jour.
 export function migratePanel(panel: Panel): Panel {
   if (panel.version === MODEL_VERSION) return panel;
-  return {
+  // 1. Enrichit les champs techniques (dont type) à partir des libellés.
+  const enriched: Panel = {
     ...panel,
-    version: MODEL_VERSION,
     rows: panel.rows.map((row) => ({
       ...row,
       breakers: row.breakers.map(enrichBreakerFromLabel),
     })),
   };
+  // 2. Déduit la relation de protection une fois les types connus.
+  const withProtection = assignProtection(enriched);
+  return { ...withProtection, version: MODEL_VERSION };
 }

@@ -36,6 +36,12 @@ export interface Breaker {
   sensibilite_mA?: number | null;
   /** Usage du circuit protégé. null = inconnu. */
   circuit_type?: CircuitType | null;
+  /**
+   * id du module différentiel qui protège ce module (relation explicite).
+   * null = circuit non protégé par un DDR 30 mA. undefined = pas encore calculé.
+   * Source de vérité de la protection — ne JAMAIS la déduire de la position.
+   */
+  protege_par?: string | null;
 }
 
 export interface PanelRow {
@@ -56,7 +62,8 @@ export interface ProjectMeta {
 // Version du modèle de données. Incrémentée quand la forme du Panel évolue,
 // pour piloter d'éventuelles migrations best-effort à la lecture.
 //   v2 : champs techniques structurés sur Breaker (type, calibre_A, ddr_type…).
-export const MODEL_VERSION = 2;
+//   v3 : relation de protection explicite (protege_par).
+export const MODEL_VERSION = 3;
 
 export interface Panel {
   rows: PanelRow[];

@@ -90,6 +90,17 @@ export default function VoltAssistant() {
     }
   };
 
+  // Vide la conversation courante (après confirmation) → retour aux chips.
+  // Le backend est stateless : il suffit de réinitialiser l'état local.
+  const resetConversation = () => {
+    if (messages.length === 0 && !error) return;
+    if (window.confirm("Effacer cette conversation ?")) {
+      setMessages([]);
+      setError(null);
+      setInput("");
+    }
+  };
+
   return (
     <div ref={rootRef} style={{ position: "fixed", right: 20, bottom: 20, zIndex: 9999, fontFamily: "var(--font-sans)" }}>
       <style>{KEYFRAMES}</style>
@@ -124,6 +135,15 @@ export default function VoltAssistant() {
               <div style={{ fontWeight: 700, fontSize: 15 }}>Volt</div>
               <div style={{ fontSize: 11, opacity: 0.85 }}>Assistant électricien</div>
             </div>
+            <button
+              type="button"
+              onClick={resetConversation}
+              aria-label="Recommencer la conversation"
+              title="Recommencer"
+              style={{ background: "rgba(255,255,255,0.18)", border: "none", color: "#FFF", width: 28, height: 28, borderRadius: 8, cursor: "pointer", fontSize: 15, lineHeight: 1, marginRight: 6 }}
+            >
+              ↻
+            </button>
             <button
               type="button"
               onClick={() => setOpen(false)}
