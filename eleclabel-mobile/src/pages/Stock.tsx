@@ -4,6 +4,8 @@ import { useEffect, useMemo, useState } from "react";
 import { useStockStore } from "../store/stockStore";
 import { isNative } from "../services/native";
 import { decodeBarcode } from "../services/barcode";
+import { generateReorderPdfBlob, defaultReorderFilename } from "../services/pdfReorder";
+import { savePdfAndShare } from "../services/pdfMobile";
 import {
   type Article,
   type ArticleCategory,
@@ -68,6 +70,11 @@ export default function Stock() {
     else setSheet({ article: null });
   };
 
+  const exportReappro = async () => {
+    const blob = await generateReorderPdfBlob(lowStock(), { mode: "reappro" });
+    await savePdfAndShare(blob, defaultReorderFilename("reappro"));
+  };
+
   if (scanning) {
     return <DocumentScanner onCapture={(b, m) => void onScanCapture(b, m)} onCancel={() => setScanning(false)} />;
   }
@@ -81,6 +88,14 @@ export default function Stock() {
         <Tab label="Inventaire" active={view === "all"} onClick={() => setView("all")} />
         <Tab label={`À racheter${lowCount ? ` (${lowCount})` : ""}`} active={view === "reappro"} onClick={() => setView("reappro")} danger={lowCount > 0} />
       </div>
+
+      {view === "reappro" && lowCount > 0 && (
+        <div style={{ padding: "12px 16px 0" }}>
+          <button type="button" onClick={() => void exportReappro()} style={{ width: "100%", padding: 12, fontSize: 14, fontWeight: 700, border: "none", borderRadius: 12, background: "#111827", color: "#FFFFFF", cursor: "pointer" }}>
+            Exporter la liste de réappro (PDF)
+          </button>
+        </div>
+      )}
 
       {/* Recherche */}
       <div style={{ padding: "12px 16px 6px" }}>

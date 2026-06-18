@@ -6,6 +6,7 @@ import Preview from "./pages/Preview";
 import Templates from "./pages/Templates";
 import History from "./pages/History";
 import Invoices from "./pages/Invoices";
+import Stock from "./pages/Stock";
 import AuthGate from "./components/AuthGate";
 import UpdateBanner from "./components/UpdateBanner";
 import VoltAssistant from "./components/VoltAssistant";
@@ -20,6 +21,7 @@ export default function App() {
           <Route path="/templates" element={<Templates />} />
           <Route path="/history" element={<History />} />
           <Route path="/invoices" element={<Invoices />} />
+          <Route path="/stock" element={<Stock />} />
           <Route path="/editor" element={<Editor />} />
           <Route path="/preview" element={<Preview />} />
           <Route path="*" element={<Navigate to="/" replace />} />

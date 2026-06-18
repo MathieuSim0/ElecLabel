@@ -164,6 +164,7 @@ export default function Home() {
           <TabButton active={false} label="Modèles prêts" icon="📋" onClick={() => navigate("/templates")} />
           <TabButton active={false} label="Historique" icon="🕐" onClick={() => navigate("/history")} />
           <TabButton active={false} label="Factures" icon="🧾" onClick={() => navigate("/invoices")} />
+          <TabButton active={false} label="Stock" icon="📦" onClick={() => navigate("/stock")} />
         </div>
       </header>
 
