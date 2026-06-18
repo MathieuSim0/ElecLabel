@@ -10,6 +10,7 @@ import { get as idbGet, set as idbSet } from "idb-keyval";
 import { useAuthStore } from "../store/authStore";
 import { useInvoiceStore } from "../store/invoiceStore";
 import { useHistoryStore } from "../store/historyStore";
+import { useStockStore } from "../store/stockStore";
 import { pushInvoice, pushPanel, getCurrentUserId } from "../services/cloudSync";
 import { flush, clearQueue } from "../services/syncQueue";
 import { subscribeRealtime, unsubscribeRealtime } from "../services/realtime";
@@ -126,6 +127,7 @@ async function runInitialSync(
     await Promise.all([
       useInvoiceStore.getState().load(),
       useHistoryStore.getState().refreshFromCloud(),
+      useStockStore.getState().load(),
     ]);
   } catch (err) {
     console.warn("[AuthGate] initial sync failed:", err);

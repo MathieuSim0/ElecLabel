@@ -5,6 +5,15 @@ import { supabase } from "./supabase";
 import type { Invoice } from "../types/invoice";
 import type { HistoryEntry, HistorySource } from "../store/historyStore";
 import type { Panel } from "../types/panel";
+import type {
+  Article,
+  ArticleCategory,
+  ArticleUnit,
+  Emplacement,
+  StockMovement,
+  MovementType,
+  MovementSource,
+} from "../types/stock";
 
 const PHOTOS_BUCKET = "invoices";
 
@@ -277,6 +286,143 @@ export async function fetchAllPanels(userId: string): Promise<HistoryEntry[]> {
   if (error) throw error;
   if (!data) return [];
   return (data as PanelRow[]).map(rowToHistoryEntry);
+}
+
+// ════════════════════════════════════════════════════════════════════
+// STOCK — tables "stock_articles" et "stock_movements"
+// (mouvements append-only = journal ; quantite_stock = cache recalculable)
+// ════════════════════════════════════════════════════════════════════
+
+interface StockArticleRow {
+  id: string;
+  user_id: string;
+  nom: string;
+  categorie: string;
+  reference: string | null;
+  code_barres: string | null;
+  unite: string;
+  quantite_stock: number;
+  seuil_alerte: number | null;
+  emplacement: string | null;
+  prix_unitaire_ht: number | null;
+  fournisseur: string | null;
+  photo: string | null;
+  archived: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+interface StockMovementRow {
+  id: string;
+  user_id: string;
+  article_id: string;
+  type: string;
+  quantite: number;
+  moved_at: string;
+  note: string | null;
+  source: string;
+  created_at: string;
+}
+
+function rowToArticle(row: StockArticleRow): Article {
+  return {
+    id: row.id,
+    nom: row.nom,
+    categorie: row.categorie as ArticleCategory,
+    reference: row.reference ?? undefined,
+    code_barres: row.code_barres ?? undefined,
+    unite: row.unite as ArticleUnit,
+    quantite_stock: Number(row.quantite_stock),
+    seuil_alerte: row.seuil_alerte ?? undefined,
+    emplacement: (row.emplacement as Emplacement | null) ?? undefined,
+    prix_unitaire_ht: row.prix_unitaire_ht ?? undefined,
+    fournisseur: row.fournisseur ?? undefined,
+    photo: row.photo ?? undefined,
+    archived: row.archived,
+    createdAt: new Date(row.created_at).getTime(),
+    updatedAt: new Date(row.updated_at).getTime(),
+  };
+}
+
+function rowToMovement(row: StockMovementRow): StockMovement {
+  return {
+    id: row.id,
+    article_id: row.article_id,
+    type: row.type as MovementType,
+    quantite: Number(row.quantite),
+    date: new Date(row.moved_at).getTime(),
+    note: row.note ?? undefined,
+    source: row.source as MovementSource,
+  };
+}
+
+export async function pushStockArticle(article: Article, userId: string): Promise<void> {
+  const row = {
+    id: article.id,
+    user_id: userId,
+    nom: article.nom,
+    categorie: article.categorie,
+    reference: article.reference ?? null,
+    code_barres: article.code_barres ?? null,
+    unite: article.unite,
+    quantite_stock: article.quantite_stock,
+    seuil_alerte: article.seuil_alerte ?? null,
+    emplacement: article.emplacement ?? null,
+    prix_unitaire_ht: article.prix_unitaire_ht ?? null,
+    fournisseur: article.fournisseur ?? null,
+    photo: article.photo ?? null,
+    archived: article.archived ?? false,
+    created_at: new Date(article.createdAt).toISOString(),
+  };
+  const { error } = await supabase.from("stock_articles").upsert(row);
+  if (error) throw error;
+}
+
+export async function pushDeleteStockArticle(articleId: string, userId: string): Promise<void> {
+  // Les mouvements liés sont supprimés en cascade (FK on delete cascade).
+  const { error } = await supabase
+    .from("stock_articles")
+    .delete()
+    .eq("id", articleId)
+    .eq("user_id", userId);
+  if (error) throw error;
+}
+
+export async function pushStockMovement(movement: StockMovement, userId: string): Promise<void> {
+  const row = {
+    id: movement.id,
+    user_id: userId,
+    article_id: movement.article_id,
+    type: movement.type,
+    quantite: movement.quantite,
+    moved_at: new Date(movement.date).toISOString(),
+    note: movement.note ?? null,
+    source: movement.source,
+  };
+  const { error } = await supabase.from("stock_movements").upsert(row);
+  if (error) throw error;
+}
+
+export async function fetchAllStockArticles(userId: string): Promise<Article[]> {
+  const { data, error } = await supabase
+    .from("stock_articles")
+    .select("*")
+    .eq("user_id", userId)
+    .order("nom", { ascending: true });
+  if (error) throw error;
+  if (!data) return [];
+  return (data as StockArticleRow[]).map(rowToArticle);
+}
+
+export async function fetchAllStockMovements(userId: string): Promise<StockMovement[]> {
+  const { data, error } = await supabase
+    .from("stock_movements")
+    .select("*")
+    .eq("user_id", userId)
+    .order("moved_at", { ascending: true });
+  if (error) throw error;
+  if (!data) return [];
+  return (data as StockMovementRow[]).map(rowToMovement);
 }
 
 // ════════════════════════════════════════════════════════════════════

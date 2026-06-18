@@ -5,6 +5,7 @@ import { get as idbGet, set as idbSet, del as idbDel } from "idb-keyval";
 import type { Invoice } from "../types/invoice";
 import type { HistoryEntry } from "../store/historyStore";
 import type { Panel } from "../types/panel";
+import type { Article, StockMovement } from "../types/stock";
 import {
   pushInvoice,
   pushInvoiceMetadata,
@@ -13,6 +14,9 @@ import {
   pushPanelData,
   pushPanelName,
   pushDeletePanel,
+  pushStockArticle,
+  pushDeleteStockArticle,
+  pushStockMovement,
 } from "./cloudSync";
 
 const QUEUE_KEY = "eleclabel-sync-queue";
@@ -36,7 +40,10 @@ export type QueueOp =
       attempts: number;
     }
   | { kind: "panel-name"; userId: string; recordId: string; name: string; ts: number; attempts: number }
-  | { kind: "panel-delete"; userId: string; recordId: string; ts: number; attempts: number };
+  | { kind: "panel-delete"; userId: string; recordId: string; ts: number; attempts: number }
+  | { kind: "stock-article-upsert"; userId: string; recordId: string; record: Article; ts: number; attempts: number }
+  | { kind: "stock-article-delete"; userId: string; recordId: string; ts: number; attempts: number }
+  | { kind: "stock-movement-insert"; userId: string; recordId: string; record: StockMovement; ts: number; attempts: number };
 
 // DistributiveOmit : applique Omit à chaque variante de l'union (pas à l'union elle-même).
 // Sans ça, TypeScript ne sait pas que { kind: "panel-data", panel, breakerCount, ... } est valide.
@@ -158,6 +165,15 @@ async function executeOp(op: QueueOp): Promise<void> {
       break;
     case "panel-delete":
       await pushDeletePanel(op.recordId, op.userId);
+      break;
+    case "stock-article-upsert":
+      await pushStockArticle(op.record, op.userId);
+      break;
+    case "stock-article-delete":
+      await pushDeleteStockArticle(op.recordId, op.userId);
+      break;
+    case "stock-movement-insert":
+      await pushStockMovement(op.record, op.userId);
       break;
   }
 }

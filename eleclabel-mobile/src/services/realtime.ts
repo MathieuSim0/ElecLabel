@@ -5,11 +5,24 @@ import type { RealtimeChannel, RealtimePostgresChangesPayload } from "@supabase/
 import { supabase } from "./supabase";
 import { useInvoiceStore } from "../store/invoiceStore";
 import { useHistoryStore, type HistoryEntry, type HistorySource } from "../store/historyStore";
+import { useStockStore } from "../store/stockStore";
 import type { Invoice } from "../types/invoice";
 import type { Panel } from "../types/panel";
+import {
+  computeStock,
+  type Article,
+  type ArticleCategory,
+  type ArticleUnit,
+  type Emplacement,
+  type StockMovement,
+  type MovementType,
+  type MovementSource,
+} from "../types/stock";
 
 let invoicesChannel: RealtimeChannel | null = null;
 let panelsChannel: RealtimeChannel | null = null;
+let stockArticlesChannel: RealtimeChannel | null = null;
+let stockMovementsChannel: RealtimeChannel | null = null;
 
 // ── Type narrowing pour les payloads Supabase ──
 
@@ -140,6 +153,118 @@ function handlePanelChange(payload: RealtimePostgresChangesPayload<PanelRow>): v
   }
 }
 
+// ── Stock : articles + mouvements ──
+
+interface StockArticleRow {
+  id: string;
+  user_id: string;
+  nom: string;
+  categorie: string;
+  reference: string | null;
+  code_barres: string | null;
+  unite: string;
+  quantite_stock: number;
+  seuil_alerte: number | null;
+  emplacement: string | null;
+  prix_unitaire_ht: number | null;
+  fournisseur: string | null;
+  photo: string | null;
+  archived: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+interface StockMovementRow {
+  id: string;
+  user_id: string;
+  article_id: string;
+  type: string;
+  quantite: number;
+  moved_at: string;
+  note: string | null;
+  source: string;
+  created_at: string;
+}
+
+function rowToArticle(row: StockArticleRow): Article {
+  return {
+    id: row.id,
+    nom: row.nom,
+    categorie: row.categorie as ArticleCategory,
+    reference: row.reference ?? undefined,
+    code_barres: row.code_barres ?? undefined,
+    unite: row.unite as ArticleUnit,
+    quantite_stock: Number(row.quantite_stock),
+    seuil_alerte: row.seuil_alerte ?? undefined,
+    emplacement: (row.emplacement as Emplacement | null) ?? undefined,
+    prix_unitaire_ht: row.prix_unitaire_ht ?? undefined,
+    fournisseur: row.fournisseur ?? undefined,
+    photo: row.photo ?? undefined,
+    archived: row.archived,
+    createdAt: new Date(row.created_at).getTime(),
+    updatedAt: new Date(row.updated_at).getTime(),
+  };
+}
+
+function rowToMovement(row: StockMovementRow): StockMovement {
+  return {
+    id: row.id,
+    article_id: row.article_id,
+    type: row.type as MovementType,
+    quantite: Number(row.quantite),
+    date: new Date(row.moved_at).getTime(),
+    note: row.note ?? undefined,
+    source: row.source as MovementSource,
+  };
+}
+
+// Recalcule quantite_stock d'un article depuis ses mouvements (source de vérité).
+function recomputeOne(articleId: string, articles: Article[], movements: StockMovement[]): Article[] {
+  const stock = computeStock(movements.filter((m) => m.article_id === articleId));
+  return articles.map((a) => (a.id === articleId ? { ...a, quantite_stock: stock } : a));
+}
+
+function handleStockArticleChange(payload: RealtimePostgresChangesPayload<StockArticleRow>): void {
+  if (payload.eventType === "INSERT" || payload.eventType === "UPDATE") {
+    const incoming = rowToArticle(payload.new);
+    useStockStore.setState((state) => {
+      const exists = state.articles.some((a) => a.id === incoming.id);
+      // On préserve quantite_stock recalculé depuis les mouvements locaux.
+      const localStock = computeStock(state.movements.filter((m) => m.article_id === incoming.id));
+      const merged = { ...incoming, quantite_stock: localStock };
+      const articles = exists
+        ? state.articles.map((a) => (a.id === incoming.id ? merged : a))
+        : [...state.articles, merged].sort((a, b) => a.nom.localeCompare(b.nom));
+      return { articles };
+    });
+  } else if (payload.eventType === "DELETE") {
+    const deletedId = (payload.old as StockArticleRow | undefined)?.id;
+    if (!deletedId) return;
+    useStockStore.setState((state) => ({
+      articles: state.articles.filter((a) => a.id !== deletedId),
+      movements: state.movements.filter((m) => m.article_id !== deletedId),
+    }));
+  }
+}
+
+function handleStockMovementChange(payload: RealtimePostgresChangesPayload<StockMovementRow>): void {
+  if (payload.eventType === "INSERT") {
+    const m = rowToMovement(payload.new);
+    useStockStore.setState((state) => {
+      if (state.movements.some((x) => x.id === m.id)) return state;
+      const movements = [...state.movements, m];
+      return { movements, articles: recomputeOne(m.article_id, state.articles, movements) };
+    });
+  } else if (payload.eventType === "DELETE") {
+    const old = payload.old as StockMovementRow | undefined;
+    if (!old?.id) return;
+    useStockStore.setState((state) => {
+      const movements = state.movements.filter((x) => x.id !== old.id);
+      return { movements, articles: recomputeOne(old.article_id, state.articles, movements) };
+    });
+  }
+}
+
 // ── API publique ──
 
 export function subscribeRealtime(userId: string): void {
@@ -172,6 +297,24 @@ export function subscribeRealtime(userId: string): void {
       handlePanelChange,
     )
     .subscribe();
+
+  stockArticlesChannel = supabase
+    .channel(`stock_articles:${userId}`)
+    .on<StockArticleRow>(
+      "postgres_changes",
+      { event: "*", schema: "public", table: "stock_articles", filter: `user_id=eq.${userId}` },
+      handleStockArticleChange,
+    )
+    .subscribe();
+
+  stockMovementsChannel = supabase
+    .channel(`stock_movements:${userId}`)
+    .on<StockMovementRow>(
+      "postgres_changes",
+      { event: "*", schema: "public", table: "stock_movements", filter: `user_id=eq.${userId}` },
+      handleStockMovementChange,
+    )
+    .subscribe();
 }
 
 export function unsubscribeRealtime(): void {
@@ -182,5 +325,13 @@ export function unsubscribeRealtime(): void {
   if (panelsChannel) {
     supabase.removeChannel(panelsChannel);
     panelsChannel = null;
+  }
+  if (stockArticlesChannel) {
+    supabase.removeChannel(stockArticlesChannel);
+    stockArticlesChannel = null;
+  }
+  if (stockMovementsChannel) {
+    supabase.removeChannel(stockMovementsChannel);
+    stockMovementsChannel = null;
   }
 }
