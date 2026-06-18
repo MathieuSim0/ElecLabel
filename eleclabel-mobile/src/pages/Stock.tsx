@@ -21,7 +21,7 @@ import StockArticleSheet from "../components/StockArticleSheet";
 const ACCENT = "#E63946";
 
 export default function Stock() {
-  const { articles, loading, load, addMovement } = useStockStore();
+  const { articles, loading, load, addMovement, seedDemo } = useStockStore();
   const lowStock = useStockStore((s) => s.lowStockArticles);
   const findByBarcode = useStockStore((s) => s.findByBarcode);
 
@@ -120,7 +120,16 @@ export default function Stock() {
         {loading && articles.length === 0 ? (
           <Empty text="Chargement…" />
         ) : list.length === 0 ? (
-          <Empty text={view === "reappro" ? "Rien à racheter 👍" : query || cat !== "all" ? "Aucun article ne correspond." : "Aucun article. Touche + pour en ajouter."} />
+          <div>
+            <Empty text={view === "reappro" ? "Rien à racheter 👍" : query || cat !== "all" ? "Aucun article ne correspond." : "Aucun article. Touche + pour en ajouter."} />
+            {view === "all" && articles.length === 0 && !query && cat === "all" && (
+              <div style={{ textAlign: "center", marginTop: -24, paddingBottom: 12 }}>
+                <button type="button" onClick={() => void seedDemo()} style={{ padding: "10px 16px", fontSize: 13.5, fontWeight: 600, border: "1.5px solid #E5E7EB", borderRadius: 10, background: "#FFFFFF", color: "#4B5563", cursor: "pointer" }}>
+                  Charger des exemples
+                </button>
+              </div>
+            )}
+          </div>
         ) : (
           list.map((a) => (
             <ArticleCard

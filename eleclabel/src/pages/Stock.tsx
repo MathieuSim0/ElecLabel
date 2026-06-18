@@ -30,7 +30,7 @@ function downloadBlob(blob: Blob, filename: string): void {
 
 export default function Stock() {
   const navigate = useNavigate();
-  const { articles, load, addMovement } = useStockStore();
+  const { articles, load, addMovement, seedDemo } = useStockStore();
   const lowStock = useStockStore((s) => s.lowStockArticles);
 
   const [view, setView] = useState<"all" | "reappro">("all");
@@ -92,6 +92,11 @@ export default function Stock() {
           {list.length === 0 ? (
             <div style={{ padding: 40, textAlign: "center", color: "#9CA3AF", fontSize: 14 }}>
               {view === "reappro" ? "Rien à racheter 👍" : "Aucun article."}
+              {view === "all" && articles.length === 0 && (
+                <div style={{ marginTop: 14 }}>
+                  <button type="button" onClick={() => void seedDemo()} style={btn("#FFF", "#4B5563", true)}>Charger des exemples</button>
+                </div>
+              )}
             </div>
           ) : (
             list.map((a) => {

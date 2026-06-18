@@ -65,6 +65,8 @@ interface StockStore {
   findByBarcode: (code: string) => Article | undefined;
 
   clearLocal: () => Promise<void>;
+  /** Charge un jeu d'exemples (local uniquement, non synchronisé) pour prévisualiser. */
+  seedDemo: () => Promise<void>;
 }
 
 async function loadCache<T>(key: string): Promise<T[]> {
@@ -223,5 +225,50 @@ export const useStockStore = create<StockStore>((set, get) => ({
   clearLocal: async () => {
     set({ articles: [], movements: [] });
     await Promise.all([idbDel(ARTICLES_KEY), idbDel(MOVEMENTS_KEY)]);
+  },
+
+  seedDemo: async () => {
+    const now = Date.now();
+    const day = 86_400_000;
+    type Seed = Omit<Article, "id" | "createdAt" | "updatedAt" | "quantite_stock"> & {
+      mv: { type: "entree" | "sortie" | "ajustement"; q: number }[];
+    };
+    // Stock = somme des mouvements → on définit des mouvements cohérents.
+    const seeds: Seed[] = [
+      { nom: "Disjoncteur 16 A courbe C", categorie: "protection", unite: "piece", reference: "iC60N", fournisseur: "Schneider", seuil_alerte: 10, emplacement: "depot", code_barres: "3606480001016", mv: [{ type: "entree", q: 30 }, { type: "sortie", q: 6 }] },
+      { nom: "Disjoncteur 20 A courbe C", categorie: "protection", unite: "piece", reference: "iC60N", fournisseur: "Schneider", seuil_alerte: 10, emplacement: "depot", mv: [{ type: "entree", q: 20 }, { type: "sortie", q: 14 }] },
+      { nom: "Inter. différentiel 40 A 30 mA type A", categorie: "protection", unite: "piece", reference: "iID", fournisseur: "Schneider", seuil_alerte: 4, emplacement: "depot", mv: [{ type: "entree", q: 8 }, { type: "sortie", q: 5 }] },
+      { nom: "Câble R2V 3G2.5", categorie: "cable", unite: "metre", fournisseur: "Nexans", seuil_alerte: 50, emplacement: "camion", mv: [{ type: "entree", q: 100 }, { type: "sortie", q: 20 }] },
+      { nom: "Câble R2V 3G1.5", categorie: "cable", unite: "metre", fournisseur: "Nexans", seuil_alerte: 50, emplacement: "camion", mv: [{ type: "entree", q: 100 }, { type: "sortie", q: 75 }] },
+      { nom: "Gaine ICTA Ø20", categorie: "conduit_goulotte", unite: "rouleau", seuil_alerte: 5, emplacement: "depot", mv: [{ type: "entree", q: 12 }] },
+      { nom: "Boîte d'encastrement simple", categorie: "boite_coffret", unite: "boite", seuil_alerte: 20, emplacement: "depot", mv: [{ type: "entree", q: 50 }, { type: "sortie", q: 10 }] },
+      { nom: "Prise 2P+T 16 A blanche", categorie: "appareillage", unite: "piece", fournisseur: "Legrand", seuil_alerte: 15, emplacement: "camion", mv: [{ type: "entree", q: 24 }, { type: "sortie", q: 6 }] },
+      { nom: "Interrupteur va-et-vient", categorie: "appareillage", unite: "piece", fournisseur: "Legrand", seuil_alerte: 10, emplacement: "camion", mv: [{ type: "entree", q: 20 }, { type: "sortie", q: 11 }] },
+      { nom: "Bornes Wago 5 entrées", categorie: "accessoire", unite: "sachet", seuil_alerte: 10, emplacement: "depot", mv: [{ type: "entree", q: 30 }] },
+      { nom: "Ruban isolant noir", categorie: "consommable", unite: "piece", seuil_alerte: 5, emplacement: "camion", mv: [{ type: "entree", q: 10 }, { type: "sortie", q: 8 }] },
+      { nom: "Coffret 13 modules 1 rangée", categorie: "boite_coffret", unite: "piece", fournisseur: "Hager", seuil_alerte: 2, emplacement: "depot", mv: [{ type: "entree", q: 4 }] },
+    ];
+
+    const articles: Article[] = [];
+    const movements: StockMovement[] = [];
+    seeds.forEach((s, i) => {
+      const id = newId();
+      const { mv, ...rest } = s;
+      mv.forEach((m, j) => {
+        movements.push({
+          id: newId(),
+          article_id: id,
+          type: m.type,
+          quantite: m.q,
+          date: now - (seeds.length - i) * day - j * 3600_000,
+          source: "manuel",
+        });
+      });
+      articles.push({ ...rest, id, quantite_stock: 0, createdAt: now - (seeds.length - i) * day, updatedAt: now });
+    });
+
+    const recomputed = recompute(articles, movements);
+    set({ articles: recomputed, movements, loading: false });
+    await Promise.all([saveCache(ARTICLES_KEY, recomputed), saveCache(MOVEMENTS_KEY, movements)]);
   },
 }));
