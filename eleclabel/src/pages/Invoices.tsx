@@ -178,7 +178,20 @@ export default function Invoices() {
     setExportProgress({ current: 0, total: month.items.length, label: "Préparation…" });
     setError(null);
     try {
-      const blob = await generateInvoicesZip(month.items, (current, total, label) => {
+      // Charge les photos HD manquantes (factures synchro depuis le cloud) avant
+      // de générer les PDF — sinon le ZIP contient des factures sans image.
+      for (let i = 0; i < month.items.length; i++) {
+        const inv = month.items[i];
+        if (!inv.imageBase64 || inv.imageBase64.length === 0) {
+          setExportProgress({ current: i, total: month.items.length, label: "Chargement des photos…" });
+          await loadPhotoIfMissing(inv.id);
+        }
+      }
+      // Relit les factures hydratées depuis le store (imageBase64 désormais rempli)
+      const state = useInvoiceStore.getState().invoices;
+      const items = month.items.map((inv) => state.find((i) => i.id === inv.id) ?? inv);
+
+      const blob = await generateInvoicesZip(items, (current, total, label) => {
         setExportProgress({ current, total, label });
       });
       const filename = defaultZipFilenameForMonth(month.key);
