@@ -5,7 +5,7 @@ import { Filesystem, Directory } from "@capacitor/filesystem";
 import { Share } from "@capacitor/share";
 import { useInvoiceStore } from "../store/invoiceStore";
 import { processInvoiceImage, createInvoiceThumbnail } from "../services/imageInvoice";
-import { runOcr, extractInvoiceMetadata } from "../services/ocrInvoice";
+import { smartExtractInvoice } from "../services/aiInvoice";
 import { generateInvoicePdfBlob, defaultInvoiceFilename } from "../services/pdfInvoice";
 import { generateInvoicesZip, defaultZipFilenameForMonth } from "../services/zipExport";
 import { isNative } from "../services/native";
@@ -71,15 +71,11 @@ export default function Invoices() {
       setProcessing({ step: "Miniature…", progress: 40 });
       const thumbnail = await createInvoiceThumbnail(processed.base64, processed.mimeType, 300);
 
-      setProcessing({ step: "Lecture OCR (premier scan plus long)…", progress: 65 });
-      let metadata: InvoiceMetadata = {};
-      let ocrText = "";
-      try {
-        ocrText = await runOcr(processed.base64, processed.mimeType);
-        metadata = extractInvoiceMetadata(ocrText);
-      } catch (ocrErr) {
-        console.warn("OCR failed:", ocrErr);
-      }
+      setProcessing({ step: "Analyse IA de la facture…", progress: 65 });
+      // IA (GPT-4o Vision) d'abord, repli Tesseract si indisponible — voir aiInvoice.ts
+      const extraction = await smartExtractInvoice(processed.base64, processed.mimeType);
+      const metadata = extraction.metadata;
+      const ocrText = extraction.rawText ?? "";
 
       setProcessing(null);
       // Ouvre le formulaire de vérification — rien n'est sauvegardé pour l'instant

@@ -17,11 +17,11 @@ const GROQ_ENDPOINT = "https://api.groq.com/openai/v1/chat/completions";
 // Mode proxy : si VITE_USE_AI_PROXY = "true", les appels passent par la Supabase
 // Edge Function "ai-proxy" (les clés API restent côté serveur, absentes du binaire).
 // Sinon, comportement historique : appel direct avec les clés du .env.
-const USE_PROXY = import.meta.env.VITE_USE_AI_PROXY === "true";
+export const USE_PROXY = import.meta.env.VITE_USE_AI_PROXY === "true";
 
 // Envoie un body de chat completion soit vers le proxy Supabase (token utilisateur),
 // soit en direct vers OpenAI/Groq (clé API). Retourne la Response brute.
-async function postChatCompletion(
+export async function postChatCompletion(
   provider: "openai" | "groq",
   payload: Record<string, unknown>,
   apiKey: string,

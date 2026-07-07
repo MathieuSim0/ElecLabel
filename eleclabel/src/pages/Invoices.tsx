@@ -3,7 +3,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useInvoiceStore } from "../store/invoiceStore";
 import { processInvoiceImage, createInvoiceThumbnail } from "../services/imageInvoice";
-import { runOcr, extractInvoiceMetadata } from "../services/ocrInvoice";
+import { smartExtractInvoice } from "../services/aiInvoice";
 import { generateInvoicePdfBlob, defaultInvoiceFilename } from "../services/pdfInvoice";
 import { generateInvoicesZip, defaultZipFilenameForMonth } from "../services/zipExport";
 import { type Invoice, type InvoiceMetadata, formatAmount, parseAmount, monthKey, monthLabel } from "../types/invoice";
@@ -77,15 +77,11 @@ export default function Invoices() {
         setProcessing({ step: "Miniature…", progress: 45 });
         const thumbnail = await createInvoiceThumbnail(processed.base64, processed.mimeType, 300);
 
-        setProcessing({ step: "Lecture OCR (premier scan plus long)…", progress: 65 });
-        let metadata: InvoiceMetadata = {};
-        let ocrText = "";
-        try {
-          ocrText = await runOcr(processed.base64, processed.mimeType);
-          metadata = extractInvoiceMetadata(ocrText);
-        } catch (ocrErr) {
-          console.warn("OCR failed:", ocrErr);
-        }
+        setProcessing({ step: "Analyse IA de la facture…", progress: 65 });
+        // IA (GPT-4o Vision) d'abord, repli Tesseract si indisponible — voir aiInvoice.ts
+        const extraction = await smartExtractInvoice(processed.base64, processed.mimeType);
+        const metadata = extraction.metadata;
+        const ocrText = extraction.rawText ?? "";
 
         setProcessing(null);
         // Pose en pending — rien n'est sauvegardé tant que l'utilisateur ne valide pas
@@ -120,15 +116,11 @@ export default function Invoices() {
         setProcessing({ step: `Miniature (${i + 1}/${totalFiles})`, progress: 35 });
         const thumbnail = await createInvoiceThumbnail(processed.base64, processed.mimeType, 300);
 
-        setProcessing({ step: `OCR (${i + 1}/${totalFiles})…`, progress: 55 });
-        let metadata: InvoiceMetadata = {};
-        let ocrText = "";
-        try {
-          ocrText = await runOcr(processed.base64, processed.mimeType);
-          metadata = extractInvoiceMetadata(ocrText);
-        } catch (ocrErr) {
-          console.warn("OCR failed:", ocrErr);
-        }
+        setProcessing({ step: `Analyse IA (${i + 1}/${totalFiles})…`, progress: 55 });
+        // IA (GPT-4o Vision) d'abord, repli Tesseract si indisponible — voir aiInvoice.ts
+        const extraction = await smartExtractInvoice(processed.base64, processed.mimeType);
+        const metadata = extraction.metadata;
+        const ocrText = extraction.rawText ?? "";
 
         setProcessing({ step: `Sauvegarde (${i + 1}/${totalFiles})…`, progress: 75 });
         await add({
